@@ -4,7 +4,7 @@ import pygame
 
 
 class Node:
-    RADIUS = 50
+    RADIUS = 25
     VISITED_COLOUR = (255, 0, 0)
     UNDISCOVERED_COLOUR = (0, 0, 0)
     DISCOVERED_COLOUR = (125, 125, 125)
@@ -40,6 +40,12 @@ class Node:
     def get_ID(self):
         return self.__ID
 
+    def get_x(self):
+        return self.__x
+
+    def get_y(self):
+        return self.__y
+
     def set_parent(self, parent_node):
         self.__parent = parent_node
 
@@ -72,13 +78,17 @@ class Graph:
     def build(self):
         temp = []
         start_width_x = 0
-        start_height_x = 0
+        start_height_y = 0
         end_width_x = self.__width - self.__spaced
+        end_height_y = self.__height - self.__spaced
 
         for x in range(start_width_x, end_width_x, self.__spaced):
             column = []  # Create a new empty column for every X
-            for y in range(start_height_x, self.__height, self.__spaced):
-                column.append(Node(x + self.__spaced, y + self.__spaced))  # Add nodes to the column
+
+            for y in range(start_height_y, end_height_y, self.__spaced):
+                new_node = Node(x + self.__spaced, y + self.__spaced)
+                column.append(new_node)  # Add nodes to the column
+
             temp.append(column)
 
         # Building the graph
@@ -101,6 +111,18 @@ class Graph:
     def draw(self, screen):
         for node in self.__nodes:
             node.draw(screen)
+            self.__draw_edges(screen, node)
+
+    def __draw_edges(self, screen, node):
+        neighbours = node.get_neighbours()
+
+        for neighbour in neighbours:
+            start_x = node.get_x()
+            start_y = node.get_y()
+            end_x = neighbour.get_x()
+            end_y = neighbour.get_y()
+
+            pygame.draw.line(screen, (0, 0, 0), (start_x, start_y), (end_x, end_y), 5)
 
     def __breadth_first_search(self, start, waypoint_id):
         if start is None:  # If there isn't a start pos (start of game)
