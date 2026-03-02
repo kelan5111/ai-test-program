@@ -1,22 +1,20 @@
+import pygame
 from queue import Queue
 
-import pygame
+from coordinate import Coordinate
 
 
 class Node:
-    RADIUS = 25
-    VISITED_COLOUR = (255, 0, 0)
-    UNDISCOVERED_COLOUR = (0, 0, 0)
-    DISCOVERED_COLOUR = (125, 125, 125)
+    RADIUS = 10
     next_id = 0
 
     def __init__(self, x, y):
         self.__neighbours = []
 
         self.__ID = Node.next_id + 1
-        self.__x = x
-        self.__y = y
-        self.__colour = Node.UNDISCOVERED_COLOUR
+        self.__coord = Coordinate(x, y)
+        self.__show = False
+        self.__debug_colour = (128, 255, 0)
 
         self.__visited = False
         self.__distance = 0
@@ -28,8 +26,8 @@ class Node:
         return f'Node ID: {self.__ID}'
 
     def draw(self, screen):
-        pygame.draw.circle(screen, self.__colour, (self.__x, self.__y), Node.RADIUS)
-        pygame.draw.circle(screen, (255, 255, 255), (self.__x, self.__y), Node.RADIUS, 3)
+        if self.__show:
+            pygame.draw.circle(screen, self.__debug_colour, self.__coord.get_coord(), Node.RADIUS)
 
     def add_neighbour(self, node):
         self.__neighbours.append(node)
@@ -37,14 +35,17 @@ class Node:
     def get_neighbours(self):
         return [n for n in self.__neighbours]
 
+    def show(self):
+        self.__show = True
+
+    def hide(self):
+        self.__show = False
+
+    def is_showing(self):
+        return self.__show
+
     def get_ID(self):
         return self.__ID
-
-    def get_x(self):
-        return self.__x
-
-    def get_y(self):
-        return self.__y
 
     def set_parent(self, parent_node):
         self.__parent = parent_node
@@ -64,13 +65,22 @@ class Node:
     def set_visited(self, visited):
         self.__visited = visited
 
+    def set_debug_colour(self, debug_colour):
+        self.__debug_colour = debug_colour
+
+    def get_coord(self):
+        return self.__coord
+
 
 class Graph:
     def __init__(self, width=None, height=None, spaced=None):
         self.__width = width
         self.__height = height
         self.__spaced = spaced
+        self.__debug = True
         self.__nodes = []
+
+        self.build()
 
     def __str__(self):
         return "Graph"
@@ -101,6 +111,7 @@ class Graph:
 
                 if current_node not in self.__nodes:
                     self.__nodes.append(current_node)
+                    current_node.show()
 
                 possible_pos = [(col, row - 1), (col, row + 1), (col - 1, row), (col + 1, row)]
 
@@ -109,18 +120,20 @@ class Graph:
                         current_node.add_neighbour(temp[poss_col][poss_row])
 
     def draw(self, screen):
-        for node in self.__nodes:
-            node.draw(screen)
-            self.__draw_edges(screen, node)
+        if self.__debug:
+            for node in self.__nodes:
+                node.draw(screen)
 
-    def __draw_edges(self, screen, node):
+                self.__draw_edge(screen, node)
+
+    def __draw_edge(self, screen, node):
         neighbours = node.get_neighbours()
 
         for neighbour in neighbours:
-            start_x = node.get_x()
-            start_y = node.get_y()
-            end_x = neighbour.get_x()
-            end_y = neighbour.get_y()
+            start_x = node.get_coord().get_x()
+            start_y = node.get_coord().get_y()
+            end_x = neighbour.get_coord().get_x()
+            end_y = neighbour.get_coord().get_y()
 
             pygame.draw.line(screen, (0, 0, 0), (start_x, start_y), (end_x, end_y), 5)
 
@@ -162,23 +175,28 @@ class Graph:
         return None
 
     def build_path(self, path, waypoint_id, start, target_waypoint=None):
-        if len(path) == 0:
-            if target_waypoint is None:
-                # BFS search for path without a target
-                target_waypoint = self.__breadth_first_search(start, waypoint_id)
-            else:
-                # BFS search for path with a target
-                target_waypoint = self.__breadth_first_search(start, target_waypoint.get_ID())
+        try:
+            if len(path) == 0:
+                if target_waypoint is None:
+                    # BFS search for path without a target
+                    target_waypoint = self.__breadth_first_search(start, waypoint_id)
+                else:
+                    # BFS search for path with a target
+                    target_waypoint = self.__breadth_first_search(start, target_waypoint.get_ID())
 
-        # Base case: until we reach the start node
-        parent = target_waypoint.get_parent()
-        if parent is None or target_waypoint.get_ID() == start.get_ID():
-            return path
+            # Base case: until we reach the start node
+            parent = target_waypoint.get_parent()
+            if parent is None or target_waypoint.get_ID() == start.get_ID():
+                return path
 
-        path.append(parent)  # Push onto stack
+            path.append(parent)  # Push onto stack
 
-        # Recursive case
-        return self.build_path(path, waypoint_id, start, parent)
+            # Recursive case
+            return self.build_path(path, waypoint_id, start, parent)
+
+        except NameError as e:
+            print(f"Path unable to be built: {e} not found.")
+            return
 
     def find_nearest_waypoint(self, coord):
         closest_waypoint = None
@@ -196,6 +214,9 @@ class Graph:
                 closest_distance = distance
 
         return closest_waypoint
+
+    def set_debug(self, debug=False):
+        self.__debug = debug
 
     def get_nodes(self):
         return self.__nodes
